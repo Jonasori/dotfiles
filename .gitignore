@@ -1,0 +1,32 @@
+# Pi — credentials and runtime state
+pi/agent/auth.json
+pi/agent/trust.json
+pi/agent/run-history.jsonl
+pi/agent/sessions/
+pi/agent/npm/
+pi/agent/bin/
+pi/agent/git/
+pi/agent/pi-pretty/
+pi/context-mode/
+pi/web-search.json
+
+# Pi — Databricks AI Tools skills are auto-symlinked, not dotfiles content
+pi/agent/skills/databricks-*
+
+# Pi — extension runtime logs
+pi/agent/extensions/pi-permission-system/logs/
+
+.DS_Store
+
+# Claude — backup/config snapshots (keep out of git)
+claude/settings.json.*
+
+# Claude — skills synced from a remote source land in a per-machine UUID bucket
+claude/skills/synced/
+
+# Machine-local agent state and generated skill copies
+/.agents/
+/.codex/
+/.cursor/
+claude/skills/.trash/
+claude/skills/databricks-*

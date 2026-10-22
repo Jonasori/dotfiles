@@ -1,0 +1,11 @@
+# ── Readline settings (version-controlled) ─────────────────────────────────
+# Symlinked to ~/.inputrc by bootstrap.sh. Replaces the zsh equivalents:
+# `zstyle ':completion:*' matcher-list` and the up/down-line-or-beginning-search
+# bindings, neither of which has a bash counterpart outside readline.
+
+# Case-insensitive completion
+set completion-ignore-case on
+
+# Prefix-based history search: up/down arrows filter by what's already typed
+"\e[A": history-search-backward
+"\e[B": history-search-forward

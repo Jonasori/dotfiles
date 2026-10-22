@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Source of truth for all agent instructions.
+# Run after editing ~/dotfiles/AGENTS.md to regenerate format-specific wrappers.
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+AGENTS="$DOTFILES/AGENTS.md"
+
+# Claude Code: global CLAUDE.md points to the canonical file.
+# Do not keep a project-level CLAUDE.md inside dotfiles; dotfiles/AGENTS.md
+# already serves as the project rule, and a second copy wastes rule tokens.
+rm -f "$DOTFILES/claude/CLAUDE.md"
+mkdir -p "$HOME/.claude"
+ln -sf "$AGENTS" "$HOME/.claude/CLAUDE.md"
+
+# Pi reads two files from its agent dir: AGENTS.md, loaded into every session
+# as <project_context>, and APPEND_SYSTEM.md, spliced into the system prompt
+# itself. AGENTS.md carries the canonical rules; APPEND_SYSTEM.md holds only
+# pi-specific behavior.
+mkdir -p "$HOME/.pi/agent"
+ln -sf "$AGENTS" "$HOME/.pi/agent/AGENTS.md"
+ln -sf "$DOTFILES/pi/agent/APPEND_SYSTEM.md" "$HOME/.pi/agent/APPEND_SYSTEM.md"
+
+# OpenAI Codex / ChatGPT agent user-level AGENTS.md.
+mkdir -p "$HOME/.codex"
+ln -sf "$AGENTS" "$HOME/.codex/AGENTS.md"
+
+# Remove legacy/unused wrappers so they don't leak into other harnesses.
+rm -f "$HOME/.cursorrules"
+rm -f "$HOME/.cursor/rules/global.mdc"
+rm -f "$HOME/.cursor/rules/code-style.mdc"
+rmdir "$HOME/.cursor/rules" 2>/dev/null || true
+rm -f "$HOME/.codeium/windsurf/memories/global_rules.md"

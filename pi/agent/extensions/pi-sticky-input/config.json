@@ -1,0 +1,5 @@
+{
+  "$comment": "mouseScroll: enable SGR mouse reporting so trackpad/wheel scrolls the conversation history viewport instead of Ghostty's alt-screen arrow-key fallback feeding Up/Down to the editor (input history). Rows per wheel event: mouseWheelScrollRows (default 3). Trade-off: while pi runs, hold Shift to click-drag select text in Ghostty.",
+  "splitFooterRenderer": false,
+  "mouseScroll": true
+}

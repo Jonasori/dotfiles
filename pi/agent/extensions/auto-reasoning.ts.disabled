@@ -1,0 +1,201 @@
+/**
+ * auto-reasoning — local fork of @howaboua/pi-auto-reasoning-tool (MIT).
+ *
+ * Changes vs upstream (keep in sync with upstream ideas, not necessarily code):
+ *  1. Agents may request `xhigh` and `max` (upstream caps at `high`).
+ *  2. Ceiling is tunable via env `AUTO_REASONING_CEILING` (default: "max").
+ *     Set e.g. AUTO_REASONING_CEILING=high to restore upstream conservative
+ *     behavior without editing this file.
+ *  3. The user's level at turn start remains the FLOOR: the agent can never
+ *     go below it; requests below baseline clamp up to baseline.
+ *  4. While an agent-elevated level (≠ baseline) is live, publishes
+ *     `auto · <level>` as the "auto-reasoning" footer status (surfaces as an
+ *     extra on the statusline's tips row); cleared when the level is restored.
+ *
+ * Everything else mirrors upstream semantics: model-clamp on unsupported
+ * levels, restore baseline after agent settles, cache-impact warning.
+ */
+import { StringEnum, Type } from "@earendil-works/pi-ai";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+
+type ToolReasoningLevel = "low" | "medium" | "high" | "xhigh" | "max";
+type AppliedReasoningLevel = ReturnType<ExtensionAPI["getThinkingLevel"]>;
+
+const ALL_AGENT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+const REASONING_LEVELS = [
+	"off",
+	"minimal",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+] as const satisfies readonly AppliedReasoningLevel[];
+
+const CEILING_ENV = "AUTO_REASONING_CEILING";
+function parseCeiling(): ToolReasoningLevel {
+	const raw = process.env[CEILING_ENV]?.toLowerCase().trim() as ToolReasoningLevel | undefined;
+	const valid = ALL_AGENT_LEVELS.find((level) => level === raw);
+	return valid ?? "max";
+}
+const CEILING = parseCeiling();
+
+/** Agent levels at or below CEILING (ordered). */
+const AGENT_LEVELS = ALL_AGENT_LEVELS.filter(
+	(level) => REASONING_LEVELS.indexOf(level) <= REASONING_LEVELS.indexOf(CEILING),
+) as readonly ToolReasoningLevel[];
+
+type LastSelection = {
+	requestedLevel: ToolReasoningLevel;
+	appliedLevel: AppliedReasoningLevel;
+	previousLevel: AppliedReasoningLevel;
+	baselineLevel: AppliedReasoningLevel;
+};
+
+export function applyReasoningFloor(
+	requestedLevel: ToolReasoningLevel,
+	baselineLevel: AppliedReasoningLevel,
+): AppliedReasoningLevel {
+	return REASONING_LEVELS.indexOf(requestedLevel) <
+		REASONING_LEVELS.indexOf(baselineLevel)
+		? baselineLevel
+		: requestedLevel;
+}
+
+function formatModelNote(
+	ctx: ExtensionContext,
+	appliedLevel: AppliedReasoningLevel,
+	effectiveLevel: AppliedReasoningLevel,
+): string | undefined {
+	if (!ctx.model) {
+		return "No model selected; Pi may clamp this level later.";
+	}
+	if (!ctx.model.reasoning && appliedLevel === "off") {
+		return `Pi clamped reasoning to off: ${ctx.model.provider}/${ctx.model.id} does not advertise reasoning support.`;
+	}
+	if (effectiveLevel !== appliedLevel) {
+		return `Pi clamped ${effectiveLevel} to ${appliedLevel} for ${ctx.model.provider}/${ctx.model.id}.`;
+	}
+	return undefined;
+}
+
+function formatSelection(
+	requestedLevel: ToolReasoningLevel,
+	appliedLevel: AppliedReasoningLevel,
+	previousLevel: AppliedReasoningLevel,
+	baselineLevel: AppliedReasoningLevel,
+): string[] {
+	const requestedBelowBaseline =
+		REASONING_LEVELS.indexOf(requestedLevel) <
+		REASONING_LEVELS.indexOf(baselineLevel);
+	if (requestedBelowBaseline) {
+		return [
+			previousLevel === appliedLevel
+				? `Reasoning remains ${appliedLevel}.`
+				: `Reasoning: ${previousLevel} → ${appliedLevel}.`,
+			`The user set the minimum reasoning level to ${baselineLevel}; do not go below it.`,
+		];
+	}
+	if (requestedLevel === previousLevel && previousLevel === appliedLevel) {
+		return [
+			previousLevel === baselineLevel
+				? `Reasoning is already ${appliedLevel}, the user's preferred minimum.`
+				: `Reasoning is already ${appliedLevel}.`,
+		];
+	}
+	return [
+		previousLevel === appliedLevel
+			? `Reasoning remains ${appliedLevel}.`
+			: `Reasoning: ${previousLevel} → ${appliedLevel}.`,
+		`Reasoning level is ${appliedLevel} for this turn (user minimum: ${baselineLevel}).`,
+	];
+}
+
+export default function autoReasoningSelector(pi: ExtensionAPI) {
+	let lastSelection: LastSelection | undefined;
+	let turnBaselineReasoningLevel: AppliedReasoningLevel | undefined;
+	let warnedAboutCacheImpact = false;
+
+	pi.on("session_start", async (_event, ctx) => {
+		if (warnedAboutCacheImpact) return;
+		warnedAboutCacheImpact = true;
+		ctx.ui.notify(
+			"Auto Reasoning switches reasoning levels mid-session. This can cause prompt-cache misses and affect costs or quotas, depending on your provider. Use with caution.",
+			"warning",
+		);
+	});
+
+	pi.registerTool({
+		name: "change_reasoning",
+		label: "Change Reasoning",
+		description: "Adjust reasoning effort for the work ahead.",
+		promptSnippet: "Adjust reasoning effort.",
+		promptGuidelines: [
+			"change_reasoning: Adjust by work phase, not per tool call.",
+			"If the task is genuinely hard (novel algorithm design, deep debugging, rigorous math/statistics), consider escalating to xhigh or max; if it is routine, stay low or medium.",
+		],
+		parameters: Type.Object({
+			level: StringEnum(AGENT_LEVELS), // literal union, not erased to string
+		}),
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			const baselineLevel = turnBaselineReasoningLevel ?? pi.getThinkingLevel();
+			const previousLevel = pi.getThinkingLevel();
+			const effectiveLevel = applyReasoningFloor(params.level, baselineLevel);
+			pi.setThinkingLevel(effectiveLevel);
+			const appliedLevel = pi.getThinkingLevel();
+
+			lastSelection = {
+				requestedLevel: params.level,
+				appliedLevel,
+				previousLevel,
+				baselineLevel,
+			};
+
+			// Footprint for the statusline: show only while the agent is running
+			// ABOVE the user's baseline level (the model row already shows the
+			// live level, so this marks it as agent-elevated rather than set by
+			// the user). setStatus is a no-op in print/json/rpc modes.
+			if (appliedLevel !== baselineLevel) {
+				ctx.ui.setStatus("auto-reasoning", `auto · ${appliedLevel}`);
+			} else {
+				ctx.ui.setStatus("auto-reasoning", undefined);
+			}
+
+			const note = formatModelNote(ctx, appliedLevel, effectiveLevel);
+			return {
+				content: [
+					{
+						type: "text",
+						text: [
+							...formatSelection(
+								params.level,
+								appliedLevel,
+								previousLevel,
+								baselineLevel,
+							),
+							note,
+						]
+							.filter(Boolean)
+							.join("\n"),
+					},
+				],
+				details: lastSelection,
+			};
+		},
+	});
+
+	pi.on("before_agent_start", async () => {
+		turnBaselineReasoningLevel ??= pi.getThinkingLevel();
+	});
+
+	pi.on("agent_start", async () => {
+		turnBaselineReasoningLevel ??= pi.getThinkingLevel();
+	});
+
+	pi.on("agent_settled", async (_event, ctx) => {
+		const levelToRestore = turnBaselineReasoningLevel ?? pi.getThinkingLevel();
+		turnBaselineReasoningLevel = undefined;
+		pi.setThinkingLevel(levelToRestore);
+		ctx.ui.setStatus("auto-reasoning", undefined);
+	});
+}

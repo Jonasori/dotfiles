@@ -1,0 +1,39 @@
+# herdr configuration
+# Place this file at ~/.config/herdr/config.toml
+
+[ui.sound]
+enabled = false
+
+[ui.sidebar.agents]
+row_gap = 0
+rows = [
+  ["state_icon", { token = "workspace", bold = true }, "tab"],
+  ["agent"],
+  [{ token = "$summary", dim = true }],
+]
+
+# Per-agent overrides: show the live terminal title (spinner-stripped) as an
+# extra row for pi and claude, so you can see what they're doing at a glance.
+[ui.sidebar.agents.rows_by_agent]
+pi = [["state_icon", "workspace", "tab"], ["terminal_title_stripped"], ["agent"]]
+claude = [["state_icon", "workspace", "tab"], ["terminal_title_stripped"], ["agent"]]
+
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [
+  ["state_icon", { token = "workspace", bold = true }],
+  ["branch", "git_status"],
+]
+
+[keys]
+prefix = "alt+a"
+next_agent = "prefix+a"
+previous_agent = "prefix+shift+a"
+focus_agent = "prefix+alt+1..9"
+switch_workspace = "prefix+shift+1..9"
+
+[[keys.command]]
+key = "prefix+m"
+type = "plugin_action"
+command = "nicosuave.memex.toggle"
+description = "memex toggle"

@@ -1,0 +1,30 @@
+{
+  "lastChangelogVersion": "0.85.1",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "deepseek-v4.1-flash",
+  "defaultThinkingLevel": "max",
+  "quietStartup": true,
+  "editorPaddingX": 1,
+  "theme": "pi-code",
+  "packages": [
+    "npm:pi-resource-center",
+    "npm:context-mode",
+    "npm:pi-simplify",
+    "npm:pi-web-access",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "git:github.com/wanderingspirit03/pi-math-render",
+    "git:github.com/MasuRii/pi-sticky-input",
+    "npm:pi-loop-police",
+    "npm:@diegopetrucci/pi-contrarian",
+    "npm:@diegopetrucci/pi-context-cap",
+    "npm:@diegopetrucci/pi-oracle"
+  ],
+  "extensions": [],
+  "defaultProjectTrust": "always",
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "steeringMode": "all",
+  "tuiMode": "fullscreen"
+}

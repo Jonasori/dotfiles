@@ -1,0 +1,48 @@
+# ── Shared shell extras (version-controlled) ────────────────────────────────
+# Sourced from the tail of each machine's own ~/.bash_profile, so it runs AFTER
+# machine-specific setup (starship, conda, brew, …). Keep ONLY portable,
+# cross-machine config here — never hardcoded paths or per-machine tooling.
+
+# Ghostty shell integration: installs the OSC 7 cwd-report hook so new tabs and
+# splits inherit the active tab's working directory. Must run after starship,
+# which owns PROMPT_COMMAND. No-op in non-Ghostty terminals and on machines
+# without Ghostty installed (guarded on GHOSTTY_RESOURCES_DIR).
+[ -n "$GHOSTTY_RESOURCES_DIR" ] && builtin source "$GHOSTTY_RESOURCES_DIR/shell-integration/bash/ghostty.bash"
+
+# Completions. bash-completion 2.x registers a lazy loader, so definitions load
+# on first Tab rather than at startup. Homebrew's prefix differs per platform,
+# hence `brew --prefix` instead of a literal path.
+if command -v brew >/dev/null; then
+  _bc="$(brew --prefix)/etc/profile.d/bash_completion.sh"
+  [ -r "$_bc" ] && . "$_bc"
+  unset _bc
+fi
+
+# Apple's git ships its own completion inside the CommandLineTools dir, which
+# bash-completion does not scan. No-op off macOS.
+if command -v xcode-select >/dev/null; then
+  _git_bc="$(xcode-select -p 2>/dev/null)/usr/share/git-core/git-completion.bash"
+  [ -r "$_git_bc" ] && . "$_git_bc"
+  unset _git_bc
+fi
+
+alias ..="cd .."
+
+_ruff() {
+    ruff format "$@"
+    ruff check --fix --select I "$@"
+    ruff format "$@"
+}
+
+# Workaround: pi (and other kitty-keyboard TUIs) sometimes exit without
+# popping the kitty keyboard protocol, so the shell starts swallowing
+# CSI-u key-release events as garbage text like "12;1:3u".
+# Reset the keyboard modes before every prompt.
+# Ref: https://github.com/earendil-works/pi/issues/5065
+_reset_terminal_keyboard_modes() {
+  # Pop any leaked kitty keyboard stack entries (over-popping is safe:
+  # emptying the stack resets all flags), force enhancement flags to 0,
+  # and turn off xterm modifyOtherKeys. Emits no visible output.
+  printf '\e[<99u\e[=0u\e[>4;0m'
+}
+PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }_reset_terminal_keyboard_modes"

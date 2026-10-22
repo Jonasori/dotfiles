@@ -1,0 +1,107 @@
+# ─────────────────────────────────────────────────────────────
+#  Amber Embers — a low-saturation warm theme for long sessions
+#  Charcoal-brown ground, ember-amber cursor, sand-toned text.
+#  Built to feel like reading by lamplight, not staring at a screen.
+# ─────────────────────────────────────────────────────────────
+
+
+# ── Colors ───────────────────────────────────────────────────
+
+# Near-black with a brown undertone, not blue — keeps the screen warm.
+background = 1e1a14
+foreground = c8b898
+
+# Amber cursor is the one true bright point: the eye always finds it.
+cursor-color = e8a84a
+cursor-text = 1e1a14
+
+# Selection darkens rather than inverts — never breaks the dim mood.
+selection-background = 3a3228
+selection-foreground = c8b898
+
+# Palette is deliberately desaturated: muted earth tones, not neon.
+# Three cool accents (sage/slate/teal) provide relief; everything else recedes.
+palette = 0=#272218
+palette = 1=#b85448
+palette = 2=#78a86a
+palette = 3=#c49448
+palette = 4=#5e809e
+palette = 5=#9c6870
+palette = 6=#4e8c8a
+palette = 7=#b8a888
+
+# Bright row lifts value, never saturation — same earth, more light.
+palette = 8=#6b5d4c
+palette = 9=#cc6458
+palette = 10=#90be82
+palette = 11=#d4a85a
+palette = 12=#7496b2
+palette = 13=#b47880
+palette = 14=#62a0a0
+palette = 15=#d0c0a8
+
+
+# ── Typography ───────────────────────────────────────────────
+
+font-family = Monaspace Xenon
+font-size = 14
+adjust-cell-width = 1
+
+# calt + all eight stylistic sets unlock Monaspace's texture healing
+# and ligatures — the letterforms breathe at this size.
+font-feature = calt
+font-feature = ss01
+font-feature = ss02
+font-feature = ss03
+font-feature = ss04
+font-feature = ss05
+font-feature = ss06
+font-feature = ss07
+font-feature = ss08
+
+
+# ── Window ───────────────────────────────────────────────────
+
+# Generous padding gives the text room — content shouldn't touch glass.
+window-padding-x = 16
+window-padding-y = 12
+
+# Native titlebar restores traffic lights and tab bar (macOS only; ignored on Linux).
+macos-titlebar-style = native
+window-show-tab-bar = always
+
+# A steady bar cursor: present, precise, never blinking for attention.
+cursor-style = bar
+cursor-style-blink = false
+
+mouse-hide-while-typing = true
+scrollback-limit = 10000
+
+# ── Mouse / Scroll ───────────────────────────────────────────
+
+# Keep mouse reporting enabled so scroll events come in as SGR mouse
+# sequences rather than arrow-key fallbacks when an app requests it.
+# (Pi scrolls its output history via pi-sticky-input's mouseScroll mode;
+# see ~/.pi/agent/extensions/pi-sticky-input/config.json. Ghostty has no
+# wheel keybind triggers — the old wheel_scroll_* binds here were invalid.)
+mouse-reporting = true
+
+# Shell integration: auto-sets window title to CWD on every directory change.
+# Injects hooks into zsh/bash/fish at shell startup — safe to enable.
+shell-integration = detect
+
+# New-tab CWD inheritance is handled by shell integration, not a Ghostty key:
+# tab-inherit-working-directory already defaults to true, but Ghostty only knows
+# the active tab's directory if the shell reports it via OSC 7. That report is
+# wired in shell/bash_profile (sources Ghostty's integration after starship).
+# Fallback directory for brand-new windows with no parent tab to inherit from:
+working-directory = ~/Code
+
+# Apps (Volvo P2 TUI) draw their own copy-count toast; suppress
+# Ghostty's generic bottom-right "copied" splash on its copy actions.
+clipboard-copy = false
+
+# Send Option as Alt (ESC-prefixed key events) to terminal apps instead of
+# macOS text input (special characters like å). Required so Herdr's prefix
+# (alt+a, on the OS-remapped CapsLock key) reaches the client.
+macos-option-as-alt = true
