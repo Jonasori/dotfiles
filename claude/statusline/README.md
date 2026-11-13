@@ -1,17 +1,10 @@
 # claude-statusline
 
-A self-contained status line for Claude Code that works on any machine with
-bash 4+, jq, curl, and git.
-
-The shebang is `#!/usr/bin/env bash` on purpose: macOS pins `/bin/bash` at 3.2
-forever, and 3.2 differs from 4+ in ways that silently change output rather than
-erroring (most memorably, `${x/#$HOME/~}` abbreviates on 3.2 but is a no-op on 4+,
-which tilde-expands a substitution's replacement). Rather than write to the
-intersection of both, the script targets 4+ and refuses to run on less.
+A status line for Claude Code. Needs `bun`; uses `git` once per new commit.
 
 ```
 Opus 5 │ ~/dotfiles
-▲ │ 🇺🇸 OAKLAND, CA  16:28  ☁️ 63°F
+▲ │ 🇺🇸 OAKLAND, CA  16:28 23:28 UTC  ☁️ 63°F
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 CONTEXT: ⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁⛁ 19%
 ──────────────────────────────────────────────────
@@ -28,13 +21,39 @@ Point `statusLine` at the script in `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "$HOME/dotfiles/claude/statusline/statusline.sh",
-    "refreshInterval": 2
+    "command": "bun $HOME/dotfiles/claude/statusline/statusline.ts",
+    "refreshInterval": 5
   }
 }
 ```
 
 No other setup. Caches are created on first run.
+
+## Process launches
+
+Every open session runs the status line on every refresh, and endpoint-security
+agents (Defender, FortiDLP) inspect each process launch before it may run. Under
+load that inspection was measured at 56–160ms per launch, against ~7ms when idle.
+A shell script that calls out to `jq`, `date`, `stat`, `git` and `curl` makes
+about 40 launches per refresh. At that price a refresh takes seconds, overlapping
+runs pile up, and Claude Code kills them before they print: a blank footer.
+
+So a refresh launches nothing beyond `bun` itself:
+
+| Data | Where it comes from |
+|------|---------------------|
+| Account label, location, weather, quote, usage fallback | `$STATUSLINE_CACHE_DIR/shared.json`, kept fresh by `refresh.ts` |
+| Branch, stash count | read from `.git` directly |
+| Last commit time (compact modes) | one `git log` per new commit, cached by commit id |
+| Session work and title | appended transcript lines only, `$STATUSLINE_CACHE_DIR/work/<session_id>/state.json` |
+| Width | `$COLUMNS`, which Claude Code passes; the process has no terminal to ask |
+
+When a shared item is due, the renderer spawns `refresh.ts` detached and renders
+from what is already on disk. A lock keeps it to one refresher across all
+sessions, and a failed fetch waits a minute before the next attempt. Network
+calls are `fetch`, so the refresher launches only `security`, for the keychain
+token. Machine-wide data refreshes once for all sessions instead of once per
+session.
 
 ## What it shows
 
@@ -44,18 +63,19 @@ No other setup. Caches are created on first run.
 | Location, time, weather | ip-api.com + open-meteo.com (cached 60 min / 15 min) |
 | Context bar | `context_window` from stdin; estimated from file sizes before the first API call |
 | Usage 5HR / WEEK | native `rate_limits` from stdin, falling back to the OAuth usage API |
-| Session work (on the usage row) | `transcript_path` and its `subagents/*.jsonl`: days with a prompt, human prompts, compactions, unique tool calls; read incrementally into `$STATUSLINE_CACHE_DIR/work/<session_id>/` |
+| Session work (on the usage row) | `transcript_path` and its `subagents/*.jsonl`: days with a prompt, human prompts, compactions, unique tool calls |
 | Quote | zenquotes.io (cached 15 min) |
 
 The context bar has two fixed markers at 1/3 and 2/3 of the width — orange, then
 dark red — so the fill color tells you which threshold you are heading toward.
 
 Every network call is best-effort with a short timeout. Offline, the affected
-rows fall back to cache or disappear; the rest still render.
+rows fall back to cache or disappear; the rest still render. Fallback usage is
+shown while under 30 minutes old, its labels dimmed after 10.
 
 ## Responsive modes
 
-Width is detected via Kitty IPC, `/dev/tty`, `tput`, then `$COLUMNS`.
+Width is `$COLUMNS`, 80 when unset or zero.
 
 | Mode | Width | Shows |
 |------|-------|-------|
@@ -74,6 +94,7 @@ All optional, all environment variables:
 | `STATUSLINE_TEMP_UNIT` | `fahrenheit` | `fahrenheit` or `celsius` |
 | `STATUSLINE_TZ` | system timezone | IANA name, for usage-reset times |
 | `STATUSLINE_ACCOUNT` | derived (see below) | Label leading the header line |
+| `STATUSLINE_OFFLINE` | unset | `1` never fetches; renders from what is cached |
 | `ZENQUOTES_API_KEY` | unset | Keyed quote API; drops refresh to 60s |
 
 Set them in the `env` block of `settings.json`, or export them in your shell.
@@ -103,8 +124,8 @@ requests (`.claudeAiOauth.subscriptionType`, from the macOS keychain or
 | `enterprise` | `claude_max` | `enterprise` — disagreement, so no name is claimed |
 | unreadable | anything | falls back to the cached name |
 
-Both reads sit behind the same mtime cache and only re-run when `~/.claude.json`
-changes, so the `security` fork is not on the 2s refresh path.
+The refresher re-reads the profile when `~/.claude.json` changes and re-checks the
+token every 5 minutes, so the `security` launch is never on the refresh path.
 
 Set `STATUSLINE_ACCOUNT` to override with any string. The full email is
 deliberately not shown for org accounts — the header already carries location,
@@ -142,10 +163,9 @@ banner on screen forever.
 
 It lives here because it depends on this statusline. Claude Code hands the native
 `rate_limits` block to the status line only; a hook never sees it on stdin, and
-reading the OAuth token directly is off-limits. So `statusline.sh` republishes it
-to `/tmp/claude-statusline-usage-$USER.json` on every refresh (the "PUBLISH LIVE
-USAGE" block, which runs before width-mode branching so narrow panes still feed
-the hook), and the hook reads that.
+reading the OAuth token directly is off-limits. So `statusline.ts` republishes it
+to `/tmp/claude-statusline-usage-$USER.json` on every refresh (before width-mode
+branching, so narrow panes still feed the hook), and the hook reads that.
 
 Wire it up in `settings.json`:
 
@@ -263,14 +283,20 @@ dataset. Re-run the analysis if the model or context size changes.
 ## Tests
 
 ```sh
-./test.sh                          # status line + hook decision logic
+./test.sh                          # status line, refresher and hook decision logic
+bun refresh.ts --selftest          # refresher only
 bun hibernate.hook.ts --selftest   # hook only
 ```
 
-`test.sh` runs the script against synthetic input across all four width modes
-plus the degraded paths (no `rate_limits`, no `context_window`), asserts the rows
-that matter render, checks the live usage file is published correctly, and shells
-out to the hook's own self-check. Uses a throwaway cache dir.
+`test.sh` runs the status line against synthetic input across all four width
+modes plus the degraded paths (no `rate_limits`, no `context_window`), asserts the
+rows that matter render, checks the live usage file is published correctly, and
+shells out to both self-checks. Uses a throwaway cache dir and
+`STATUSLINE_OFFLINE`, so it never fetches.
+
+The refresher self-check covers the account-label guard, the usage probe's
+attempt clock (ten failing refreshes buy one billed probe), cache-shape checks
+across an account switch, and retry spacing.
 
 The hook self-check exercises threshold, staleness, buffer, cap, and malformed
 input branches without ever sleeping.
@@ -281,8 +307,8 @@ input branches without ever sleeping.
   file is deliberately in `/tmp` rather than the cache dir — it is per-boot
   scratch, and a stale copy surviving a reboot is exactly what the hook's
   freshness guard is there to reject.
-- Session labels come from Claude Code's own `sessions-index.json`, so only
-  sessions renamed with `/rename` show a label.
+- Session labels come from the transcript's title records: a `/rename` title,
+  else the auto-generated one.
 - The keyless zenquotes endpoint allows 5 req / 30s, which several concurrent
   panes will exhaust. A 429 is filtered out rather than cached, so the previous
   quote stays until a fetch succeeds.

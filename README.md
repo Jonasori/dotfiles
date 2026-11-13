@@ -23,7 +23,7 @@ This file is shared across machines with different usernames, so never hardcode
 `$HOME` works in **`command`** strings — Claude Code runs those through a shell,
 which expands it:
 ```json
-"command": "$HOME/dotfiles/claude/statusline/statusline.sh"   // ✅ expands
+"command": "bun $HOME/dotfiles/claude/statusline/statusline.ts"   // ✅ expands
 ```
 
 `$HOME` does **NOT** work in the **`env`** block. Those values are passed to
@@ -38,7 +38,7 @@ appeared in every project folder).
 ```
 Either omit the path env var entirely and let the consumer fall back to a
 `$HOME`-based default, or expand a leading `$HOME`/`${HOME}`/`~` inside the
-consumer (see the `CACHE_DIR` block in `claude/statusline/statusline.sh`).
+consumer (see `expandHome` in `claude/statusline/refresh.ts`).
 
 ### Claude Code config is deliberately minimal
 
@@ -56,7 +56,7 @@ configured entirely through environment variables — see its README. Run
 because it is not independent of the status line: it pauses the session near the
 5-hour usage limit, and the only source for that percentage is the native
 `rate_limits` block, which Claude Code hands to the status line and to nothing
-else. `statusline.sh` republishes it to `/tmp` for the hook to read. Change one,
+else. `statusline.ts` republishes it to `/tmp` for the hook to read. Change one,
 check the other. It needs `bun`.
 
 Both are referenced by absolute path in `settings.json`, so unlike the other

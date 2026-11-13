@@ -14,11 +14,11 @@
  * The 5HR percentage is exactly what the footer shows ("USE: 5HR: 72%"). It comes
  * from Claude Code's native `rate_limits` (Anthropic /api/oauth/usage). That native
  * data is NOT on a PreToolUse hook's stdin, and pulling the OAuth token ourselves
- * is off-limits — so statusline.sh (which receives fresh native data every ~2s
+ * is off-limits — so statusline.ts (which receives fresh native data on every
  * refresh) persists it to this file, and we read it here:
  *     /tmp/claude-statusline-usage-$USER.json  ->  {five_hour_pct, five_hour_reset, ...}
- * The writer is the "PUBLISH LIVE USAGE" block near the top of statusline.sh, which
- * runs before any width-mode branching so narrow panes still feed this hook.
+ * The writer is the rate_limits block near the top of statusline.ts, which runs
+ * before any width-mode branching so narrow panes still feed this hook.
  *
  * TRIGGER: PreToolUse (no matcher — runs before every tool). Reading one small
  * local file is ~free, so it checks on every tool with no throttle — which catches
@@ -58,7 +58,7 @@
  * stderr is not surfaced on a non-blocking hook. Hours of that is indistinguishable
  * from a hang, and a user who concludes it hung and hits ctrl-c has thrown away the
  * whole wait. So before sleeping we publish `<until-epoch> <pct> <pid>` to
- * /tmp/claude-hibernate-$USER and statusline.sh renders a countdown banner from it;
+ * /tmp/claude-hibernate-$USER and statusline.ts renders a countdown banner from it;
  * the status line keeps refreshing while the hook blocks (verified), so it ticks.
  * See publishState for how the banner is kept from outliving the sleep.
  *
@@ -138,9 +138,8 @@ function livePath(): string {
 }
 
 /**
- * Where the countdown banner is published for statusline.sh. Format is one line,
- * `<wake-epoch-seconds> <pct> <pid>` — flat rather than JSON so the status line can
- * read it with a builtin `read` on its 2s refresh instead of forking jq.
+ * Where the countdown banner is published for statusline.ts. Format is one line,
+ * `<wake-epoch-seconds> <pct> <pid>`.
  *
  * The pid is what makes the banner honest. Cleanup on wake and on SIGINT/SIGTERM/
  * SIGHUP covers the ordinary exits, but a hook killed with SIGKILL runs nothing at

@@ -80,7 +80,7 @@ linkdir pi/agent/skills .pi/agent/skills
 echo ""
 echo "=== Claude Code ==="
 # The status line is not symlinked — settings.json points at it by absolute path
-# ($HOME/dotfiles/claude/statusline/statusline.sh), which Claude Code expands.
+# (bun $HOME/dotfiles/claude/statusline/statusline.ts), which Claude Code expands.
 link claude/settings.json .claude/settings.json
 link claude/keybindings.json .claude/keybindings.json
 linkdir claude/commands .claude/commands

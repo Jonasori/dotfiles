@@ -2,7 +2,7 @@
  * claude-statusline-footer.ts
  *
  * Replaces pi's default footer with a statusline styled after the Claude Code
- * statusline (~/dotfiles/claude/statusline/statusline.sh). The status area is
+ * statusline (~/dotfiles/claude/statusline/statusline.ts). The status area is
  * a stack of four rows; the top two pair a left and a right column so related
  * metadata shares one line instead of each owning a line:
  *
@@ -29,7 +29,7 @@
  * left, so neither side is ever dropped entirely. USE is always shown (it
  * carries the $ cost, so the "USE/cost" slot and the branch share row 2).
  *
- * Palette is ported verbatim from statusline.sh: slate structural colors,
+ * Palette is ported verbatim from statusline.ts: slate structural colors,
  * sky/blue git colors, indigo context colors, brown/orange usage colors, gold
  * quote colors. The CONTEXT bar keeps the reference's 1/3 (orange) and 2/3
  * (dark-red) threshold markers, the green→orange→dark-red banding, and is
@@ -53,7 +53,7 @@ const TIP_TICK_MS = Math.max(1000, Number(process.env.CLAUDE_STATUSLINE_TIP_TICK
 const MAX_BAR_BUCKETS = 60;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COLOR PALETTE (ported from ~/dotfiles/claude/statusline/statusline.sh)
+// COLOR PALETTE (ported from ~/dotfiles/claude/statusline/statusline.ts)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const RESET = "\x1b[0m";
@@ -109,7 +109,7 @@ function usageColor(pct: number): string {
 /**
  * Render the context bar: `width` buckets, two threshold markers at 1/3
  * (orange) and 2/3 (dark red), filled buckets banded green → orange → dark
- * red, empty buckets dim indigo. Mirrors render_context_bar() in statusline.sh.
+ * red, empty buckets dim indigo. Mirrors contextBar() in statusline.ts.
  */
 function renderContextBar(width: number, pct: number): string {
 	if (width < 3) return "";

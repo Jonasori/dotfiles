@@ -176,7 +176,7 @@ type Band =
   | "golddim"
   | "uselabel";
 
-// Claude statusline palette (~/dotfiles/claude/statusline/statusline.sh RGBs).
+// Claude statusline palette (~/dotfiles/claude/statusline/statusline.ts RGBs).
 const RGB: Record<Band, [number, number, number]> = {
   text: [203, 213, 225], // model / values
   cwd: [148, 163, 184], // working directory
