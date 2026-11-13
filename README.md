@@ -65,8 +65,8 @@ processes do not import new extensions. Run the focused checks with
 
 ### The status line is self-contained
 
-`claude/statusline/` is a standalone bash script with no dependencies beyond
-bash, jq, curl, and git. It caches to `~/.cache/claude-statusline/` and is
+`claude/statusline/` is a standalone Bun script that needs only `bun` and
+`git`. It caches to `~/.cache/claude-statusline/` and is
 configured entirely through environment variables — see its README. Run
 `claude/statusline/test.sh` after changing it.
 

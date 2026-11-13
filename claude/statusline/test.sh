@@ -330,7 +330,8 @@ check "null on stdin" "$(printf 'null' | STATUSLINE_CACHE_DIR="$CACHE" COLUMNS=3
 mkdir -p /tmp/claude-hibernate-sltest
 check "hibernate state is a directory" "$(printf '%s' "$FULL" | USER=sltest STATUSLINE_CACHE_DIR="$CACHE" COLUMNS=140 bun "$SCRIPT" 2>&1)" "CONTEXT:"
 rmdir /tmp/claude-hibernate-sltest
-mkdir -p "/tmp/claude-statusline-usage-sltest.json"
+rm -f "/tmp/claude-statusline-usage-sltest.json"
+mkdir "/tmp/claude-statusline-usage-sltest.json"
 check "live usage file unwritable" "$(printf '%s' "$FULL" | USER=sltest STATUSLINE_CACHE_DIR="$CACHE" COLUMNS=140 bun "$SCRIPT" 2>&1)" "CONTEXT:"
 rmdir "/tmp/claude-statusline-usage-sltest.json"
 printf '{"quote":{"text":"No author.","at":%s}}\n' "$(date +%s)" > "$CACHE/shared.json"
