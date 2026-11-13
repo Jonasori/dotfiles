@@ -44,6 +44,7 @@ palette = 15=#d0c0a8
 # ── Typography ───────────────────────────────────────────────
 
 font-family = Monaspace Xenon
+font-family = MesloLGL Nerd Font Mono
 font-size = 14
 adjust-cell-width = 1
 
