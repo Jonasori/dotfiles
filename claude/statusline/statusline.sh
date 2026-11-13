@@ -863,7 +863,8 @@ fi
 
 if [ "$MODE" = "normal" ]; then
 {
-    # 5. Quote prefetch (was serial at the end — now parallel)
+    # 5. Quote refresh, detached: the render reads whatever quote.txt holds, so a
+    # slow fetch shows up on a later refresh instead of blocking this one.
     # The keyless endpoint allows 5 req / 30s, so a 60s cadence across concurrent
     # panes 429s constantly. Refresh every 15 min unless a key is configured.
     # Rate-limit / system messages come back with a == "zenquotes.io" — filter those
@@ -879,9 +880,11 @@ if [ "$MODE" = "normal" ]; then
         fi
         new_quote=$(curl -s --max-time 2 "$_quote_url" 2>/dev/null | \
             jq -r '.[0] | select(.q | length < 80) | select(.a != "zenquotes.io") | .q + "|" + .a' 2>/dev/null)
-        [ -n "$new_quote" ] && [ "$new_quote" != "null" ] && echo "$new_quote" > "$QUOTE_CACHE"
+        [ -n "$new_quote" ] && [ "$new_quote" != "null" ] && \
+            echo "$new_quote" > "$QUOTE_CACHE.$$" && mv "$QUOTE_CACHE.$$" "$QUOTE_CACHE"
     fi
-} &
+} >/dev/null 2>&1 &
+disown
 fi
 
 # --- PARALLEL BLOCK END - wait for all to complete ---
@@ -1093,7 +1096,7 @@ calc_bar_width() {
 # ═══════════════════════════════════════════════════════════════════════════════
 # NOTE: location_city, location_state, weather_str are populated by PARALLEL PREFETCH
 
-current_time=$(date +"%H:%M")
+current_time="$(date +%H:%M) ${SLATE_600}$(date -u +%H:%M) UTC"
 
 # Session label: uppercased, and capped so a long auto-generated title cannot
 # push the CWD and branch off the top row (ai-title runs to whole sentences,
