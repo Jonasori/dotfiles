@@ -101,8 +101,8 @@
   "enableWorkflows": true,
   "statusLine": {
     "type": "command",
-    "command": "$HOME/dotfiles/claude/statusline/statusline.sh",
-    "refreshInterval": 2
+    "command": "bun $HOME/dotfiles/claude/statusline/statusline.ts",
+    "refreshInterval": 5
   },
   "enabledPlugins": {
     "code-review@claude-plugins-official": false,
