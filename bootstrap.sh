@@ -78,6 +78,16 @@ linkdir pi/agent/prompts .pi/agent/prompts
 linkdir pi/agent/skills .pi/agent/skills
 
 echo ""
+echo "=== OMP ==="
+linkdir omp/agent/extensions .omp/agent/extensions
+if command -v omp >/dev/null 2>&1; then
+  # Hibernation waits inside tool_call. Its 17700s cap must stay below this.
+  omp config set extensionHandlers.toolCallTimeoutMs 18000000
+else
+  echo "  skip omp not installed; set extensionHandlers.toolCallTimeoutMs=18000000 after installing"
+fi
+
+echo ""
 echo "=== Claude Code ==="
 # The status line is not symlinked — settings.json points at it by absolute path
 # (bun $HOME/dotfiles/claude/statusline/statusline.ts), which Claude Code expands.

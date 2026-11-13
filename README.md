@@ -45,6 +45,24 @@ consumer (see `expandHome` in `claude/statusline/refresh.ts`).
 Keep configuration focused on the installed hooks and skills. Prefer a plugin or
 a plain script when adding functionality.
 
+### OMP hibernation
+
+`omp/agent/extensions/hibernate.ts` applies the same 5-hour hibernation to OMP.
+Before each tool call it reads the active subscription account's usage through
+OMP's auth service; no status-line file, credential export, or `omp usage`
+subprocess is involved. At `HIBERNATE_PCT` it holds the pending tool until the
+window resets, shows a countdown in OMP's native footer, and then resumes. It
+uses the same `HIBERNATE_OFF`, `HIBERNATE_PCT`, `HIBERNATE_BUFFER_SEC`,
+`HIBERNATE_MAX_SLEEP_SEC`, and `HIBERNATE_STALE_SEC` variables and defaults as
+Claude Code. Usage errors and credentials without a durable account id fail open;
+the extension never guesses which account a report belongs to.
+
+`bootstrap.sh` links the extension into `~/.omp/agent/extensions` and sets
+`extensionHandlers.toolCallTimeoutMs` to 18000000ms, above the 17700s maximum
+sleep. Restart existing OMP sessions after installation; already-running
+processes do not import new extensions. Run the focused checks with
+`bun test omp/agent/extensions/tests/hibernate.test.ts`.
+
 ### The status line is self-contained
 
 `claude/statusline/` is a standalone bash script with no dependencies beyond
